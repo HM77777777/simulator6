@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b1420" />
+  <meta name="description" content="頭蓋・側頭骨・関節結節・下顎頭・関節円板を可変形状と透過レイヤーで観察できる、公開用の教育的顎関節シミュレーター。" />
+  <title>TMJ Atlas Lab — 解剖学的顎関節シミュレーター</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <noscript>このシミュレーターの実行にはJavaScriptが必要です。</noscript>
+
+  <header class="topbar">
+    <div class="brand-block">
+      <div class="brand-mark" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div>
+        <h1>TMJ Atlas Lab</h1>
+        <p>解剖学的顎関節・半調節性咬合器シミュレーター</p>
+      </div>
+    </div>
+    <div class="top-status" aria-label="モデル状態">
+      <span class="status-chip"><i class="status-dot"></i>リアルタイム計算</span>
+      <span class="status-chip subtle">公開用・ローカル完結</span>
+    </div>
+    <div class="top-actions">
+      <button class="top-button" id="resetAllButton" type="button" title="初期状態へ戻す">初期化</button>
+      <button class="top-button primary" id="helpButton" type="button">使い方</button>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <aside class="left-panel" aria-label="シミュレーター設定">
+      <div class="side-switch" role="group" aria-label="観察する顎関節側">
+        <button type="button" class="side-button active" data-side="right">右側顎関節</button>
+        <button type="button" class="side-button" data-side="left">左側顎関節</button>
+      </div>
+
+      <nav class="tabs" aria-label="設定カテゴリ">
+        <button class="tab active" data-tab="motion" type="button"><span>運動</span></button>
+        <button class="tab" data-tab="joint" type="button"><span>骨形態</span></button>
+        <button class="tab" data-tab="disc" type="button"><span>円板</span></button>
+        <button class="tab" data-tab="patient" type="button"><span>患者</span></button>
+        <button class="tab" data-tab="display" type="button"><span>公開・保存</span></button>
+      </nav>
+
+      <div class="panel-scroll">
+        <section class="tab-page active" data-page="motion">
+          <div class="section-title">
+            <div><p class="eyebrow">MANDIBULAR MOTION</p><h2>顎運動</h2></div>
+            <button class="mini-button" id="centricButton" type="button">中心位</button>
+          </div>
+
+          <div class="control-card accent-card">
+            <div class="slider-control">
+              <div class="control-label"><label for="openingRange">開口量（切歯点）</label><span class="value-pill"><output data-output="motion.openingMm">0.0</output> mm</span></div>
+              <input id="openingRange" data-key="motion.openingMm" type="range" min="0" max="45" step="0.1" />
+              <div class="range-ends"><span>閉口</span><span>45 mm</span></div>
+            </div>
+            <div class="slider-control">
+              <div class="control-label"><label for="protrusionRange">前方滑走</label><span class="value-pill"><output data-output="motion.protrusionMm">0.0</output> mm</span></div>
+              <input id="protrusionRange" data-key="motion.protrusionMm" type="range" min="0" max="12" step="0.1" />
+              <div class="range-ends"><span>中心位</span><span>前方</span></div>
+            </div>
+            <div class="slider-control">
+              <div class="control-label"><label for="lateralRange">側方運動</label><span class="value-pill"><output data-output="motion.lateralMm">0.0</output> mm</span></div>
+              <input id="lateralRange" data-key="motion.lateralMm" type="range" min="-12" max="12" step="0.1" />
+              <div class="range-ends"><span>右方</span><span>左方</span></div>
+            </div>
+          </div>
+
+          <div class="play-grid">
+            <button class="play-card" data-animation="open" type="button"><span class="play-icon">↕</span><strong>開閉</strong><small>回転＋自動滑走</small></button>
+            <button class="play-card" data-animation="protrusive" type="button"><span class="play-icon">→</span><strong>前方</strong><small>顆路に沿う滑走</small></button>
+            <button class="play-card" data-animation="lateral" type="button"><span class="play-icon">↔</span><strong>側方</strong><small>作業側／非作業側</small></button>
+          </div>
+
+          <div class="control-card">
+            <label class="switch-row">
+              <span><strong>開口時の顆頭滑走を自動計算</strong><small>回転優位相の後に前下方移動を加えます。</small></span>
+              <input data-key="motion.autoTranslation" type="checkbox" />
+            </label>
+            <label class="switch-row">
+              <span><strong>切歯指導を姿勢へ反映</strong><small>顆路と切歯路の差から下顎の追加回転を近似します。</small></span>
+              <input data-key="motion.useIncisalGuidance" type="checkbox" />
+            </label>
+            <div class="select-row">
+              <label for="animationSpeed">アニメーション速度</label>
+              <select id="animationSpeed" data-key="motion.animationSpeed">
+                <option value="0.35">0.35×</option>
+                <option value="0.6">0.60×</option>
+                <option value="1">1.00×</option>
+                <option value="1.5">1.50×</option>
+                <option value="2">2.00×</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h3>切歯指導</h3>
+            <div class="paired-field">
+              <label for="incisalSagittalRange">矢状前方切歯路傾斜角</label>
+              <div class="paired-input"><input id="incisalSagittalRange" data-key="guidance.incisalSagittalDeg" type="range" min="0" max="70" step="0.5" /><input data-number-for="guidance.incisalSagittalDeg" type="number" min="0" max="70" step="0.5" /><span>°</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="incisalLateralRange">側方切歯路傾斜角</label>
+              <div class="paired-input"><input id="incisalLateralRange" data-key="guidance.incisalLateralDeg" type="range" min="0" max="70" step="0.5" /><input data-number-for="guidance.incisalLateralDeg" type="number" min="0" max="70" step="0.5" /><span>°</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-page" data-page="joint">
+          <div class="section-title">
+            <div><p class="eyebrow">OSSEOUS MORPHOLOGY</p><h2>側頭骨・下顎頭</h2></div>
+          </div>
+
+          <div class="control-card accent-card">
+            <div class="paired-field major-field">
+              <label for="sciRange">矢状前方顆路傾斜角</label>
+              <div class="paired-input"><input id="sciRange" data-side-key="sagittalInclinationDeg" type="range" min="0" max="70" step="0.5" /><input data-side-number-for="sagittalInclinationDeg" type="number" min="0" max="70" step="0.5" /><span>°</span></div>
+            </div>
+            <label class="switch-row compact">
+              <span><strong>関節結節形態へ連動</strong><small>角度変更を結節の傾斜・隆起量へ反映</small></span>
+              <input data-side-key="linkEminenceToGuidance" type="checkbox" />
+            </label>
+            <div class="formula-box">
+              <span>連動時の隆起量</span>
+              <strong id="linkedHeightReadout">—</strong>
+              <small>結節長 × tan（顆路傾斜角）</small>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h3>側頭骨・関節窩</h3>
+            <div class="paired-field">
+              <label for="eminenceHeightRange">関節結節の隆起量</label>
+              <div class="paired-input"><input id="eminenceHeightRange" data-side-key="eminenceHeightMm" type="range" min="0" max="36" step="0.1" /><input data-side-number-for="eminenceHeightMm" type="number" min="0" max="36" step="0.1" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="eminenceLengthRange">関節結節の前後長</label>
+              <div class="paired-input"><input id="eminenceLengthRange" data-side-key="eminenceLengthMm" type="range" min="6" max="24" step="0.2" /><input data-side-number-for="eminenceLengthMm" type="number" min="6" max="24" step="0.2" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="fossaDepthRange">関節窩の深さ</label>
+              <div class="paired-input"><input id="fossaDepthRange" data-side-key="fossaDepthMm" type="range" min="0" max="8" step="0.1" /><input data-side-number-for="fossaDepthMm" type="number" min="0" max="8" step="0.1" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="posteriorWallRange">後方壁傾斜</label>
+              <div class="paired-input"><input id="posteriorWallRange" data-side-key="posteriorWallDeg" type="range" min="0" max="45" step="0.5" /><input data-side-number-for="posteriorWallDeg" type="number" min="0" max="45" step="0.5" /><span>°</span></div>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h3>下顎頭</h3>
+            <div class="select-row">
+              <label for="condyleShape">形態</label>
+              <select id="condyleShape" data-side-key="condyleShape">
+                <option value="oval">楕円型</option>
+                <option value="round">円形型</option>
+                <option value="flat">扁平型</option>
+                <option value="beak">嘴状型</option>
+                <option value="asymmetric">非対称型</option>
+              </select>
+            </div>
+            <div class="paired-field">
+              <label for="condyleAPRange">前後径</label>
+              <div class="paired-input"><input id="condyleAPRange" data-side-key="condyleAPMm" type="range" min="8" max="28" step="0.2" /><input data-side-number-for="condyleAPMm" type="number" min="8" max="28" step="0.2" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="condyleHeightRange">上下径</label>
+              <div class="paired-input"><input id="condyleHeightRange" data-side-key="condyleHeightMm" type="range" min="4" max="16" step="0.2" /><input data-side-number-for="condyleHeightMm" type="number" min="4" max="16" step="0.2" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="condyleMLRange">内外側径</label>
+              <div class="paired-input"><input id="condyleMLRange" data-side-key="condyleMLMm" type="range" min="10" max="32" step="0.5" /><input data-side-number-for="condyleMLMm" type="number" min="10" max="32" step="0.5" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="condyleRemodelRange">皮質輪郭の扁平化</label>
+              <div class="paired-input"><input id="condyleRemodelRange" data-side-key="condyleFlatteningPct" type="range" min="0" max="100" step="1" /><input data-side-number-for="condyleFlatteningPct" type="number" min="0" max="100" step="1" /><span>%</span></div>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h3>水平面調節</h3>
+            <div class="paired-field">
+              <label for="bennettRange">ベネット角（水平側方顆路傾斜角）</label>
+              <div class="paired-input"><input id="bennettRange" data-side-key="bennettDeg" type="range" min="0" max="40" step="0.5" /><input data-side-number-for="bennettDeg" type="number" min="0" max="40" step="0.5" /><span>°</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="issRange">即時側方移動</label>
+              <div class="paired-input"><input id="issRange" data-side-key="immediateSideShiftMm" type="range" min="0" max="3" step="0.1" /><input data-side-number-for="immediateSideShiftMm" type="number" min="0" max="3" step="0.1" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="progressiveShiftRange">作業側顆頭の進行性外側移動</label>
+              <div class="paired-input"><input id="progressiveShiftRange" data-side-key="progressiveSideShiftMmPerMm" type="range" min="0" max="0.30" step="0.01" /><input data-side-number-for="progressiveSideShiftMmPerMm" type="number" min="0" max="0.30" step="0.01" /><span>mm/mm</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-page" data-page="disc">
+          <div class="section-title">
+            <div><p class="eyebrow">ARTICULAR DISC</p><h2>関節円板・軟組織</h2></div>
+          </div>
+
+          <div class="control-card accent-card">
+            <div class="paired-field major-field">
+              <label for="discDisplacementRange">円板の前後的位置</label>
+              <div class="paired-input"><input id="discDisplacementRange" data-side-key="discDisplacementMm" type="range" min="-4" max="9" step="0.1" /><input data-side-number-for="discDisplacementMm" type="number" min="-4" max="9" step="0.1" /><span>mm</span></div>
+              <div class="range-ends"><span>後方</span><span>前方</span></div>
+            </div>
+            <label class="switch-row compact">
+              <span><strong>運動中の復位を許可</strong><small>設定した閾値以降、円板が下顎頭へ再整位するモデル</small></span>
+              <input data-side-key="discReduction" type="checkbox" />
+            </label>
+            <div class="disc-status-box">
+              <span>現在の円板―下顎頭関係</span>
+              <strong id="discRelationStatus">—</strong>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h3>円板形態</h3>
+            <div class="paired-field">
+              <label for="discAnteriorRange">前方肥厚部</label>
+              <div class="paired-input"><input id="discAnteriorRange" data-side-key="discAnteriorMm" type="range" min="0.5" max="5" step="0.1" /><input data-side-number-for="discAnteriorMm" type="number" min="0.5" max="5" step="0.1" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="discIntermediateRange">中間狭窄部</label>
+              <div class="paired-input"><input id="discIntermediateRange" data-side-key="discIntermediateMm" type="range" min="0.3" max="3" step="0.1" /><input data-side-number-for="discIntermediateMm" type="number" min="0.3" max="3" step="0.1" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="discPosteriorRange">後方肥厚部</label>
+              <div class="paired-input"><input id="discPosteriorRange" data-side-key="discPosteriorMm" type="range" min="0.5" max="5" step="0.1" /><input data-side-number-for="discPosteriorMm" type="number" min="0.5" max="5" step="0.1" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="discLengthRange">前後長</label>
+              <div class="paired-input"><input id="discLengthRange" data-side-key="discLengthMm" type="range" min="10" max="25" step="0.2" /><input data-side-number-for="discLengthMm" type="number" min="10" max="25" step="0.2" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="discDeformationRange">変形・扁平化</label>
+              <div class="paired-input"><input id="discDeformationRange" data-side-key="discDeformationPct" type="range" min="0" max="100" step="1" /><input data-side-number-for="discDeformationPct" type="number" min="0" max="100" step="1" /><span>%</span></div>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h3>運動追従</h3>
+            <div class="paired-field">
+              <label for="discMobilityRange">円板の移動追従率</label>
+              <div class="paired-input"><input id="discMobilityRange" data-side-key="discMobilityPct" type="range" min="0" max="100" step="1" /><input data-side-number-for="discMobilityPct" type="number" min="0" max="100" step="1" /><span>%</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="reductionThresholdRange">復位開始の顆頭移動量</label>
+              <div class="paired-input"><input id="reductionThresholdRange" data-side-key="discReductionThresholdMm" type="range" min="0.5" max="8" step="0.1" /><input data-side-number-for="discReductionThresholdMm" type="number" min="0.5" max="8" step="0.1" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="discRotationRange">円板初期回転</label>
+              <div class="paired-input"><input id="discRotationRange" data-side-key="discRotationDeg" type="range" min="-25" max="25" step="0.5" /><input data-side-number-for="discRotationDeg" type="number" min="-25" max="25" step="0.5" /><span>°</span></div>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h3>関節腔・支持組織</h3>
+            <div class="paired-field">
+              <label for="superiorSpaceRange">上関節腔</label>
+              <div class="paired-input"><input id="superiorSpaceRange" data-side-key="superiorJointSpaceMm" type="range" min="0.4" max="5" step="0.1" /><input data-side-number-for="superiorJointSpaceMm" type="number" min="0.4" max="5" step="0.1" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="retrodiscalRange">後部結合組織の伸展性</label>
+              <div class="paired-input"><input id="retrodiscalRange" data-side-key="retrodiscalElasticityPct" type="range" min="0" max="100" step="1" /><input data-side-number-for="retrodiscalElasticityPct" type="number" min="0" max="100" step="1" /><span>%</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="capsuleLaxityRange">関節包の弛緩度</label>
+              <div class="paired-input"><input id="capsuleLaxityRange" data-side-key="capsuleLaxityPct" type="range" min="0" max="100" step="1" /><input data-side-number-for="capsuleLaxityPct" type="number" min="0" max="100" step="1" /><span>%</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-page" data-page="patient">
+          <div class="section-title">
+            <div><p class="eyebrow">PATIENT GEOMETRY</p><h2>患者・頭蓋情報</h2></div>
+          </div>
+
+          <div class="control-card">
+            <h3>頭蓋・顔面比率</h3>
+            <div class="paired-field">
+              <label for="skullAPRange">頭蓋前後径比</label>
+              <div class="paired-input"><input id="skullAPRange" data-key="patient.skullAPPct" type="range" min="85" max="115" step="1" /><input data-number-for="patient.skullAPPct" type="number" min="85" max="115" step="1" /><span>%</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="skullVerticalRange">頭蓋上下径比</label>
+              <div class="paired-input"><input id="skullVerticalRange" data-key="patient.skullVerticalPct" type="range" min="85" max="115" step="1" /><input data-number-for="patient.skullVerticalPct" type="number" min="85" max="115" step="1" /><span>%</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="mandibleLengthRange">下顎体長比</label>
+              <div class="paired-input"><input id="mandibleLengthRange" data-key="patient.mandibleLengthPct" type="range" min="80" max="125" step="1" /><input data-number-for="patient.mandibleLengthPct" type="number" min="80" max="125" step="1" /><span>%</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="ramusHeightRange">下顎枝高比</label>
+              <div class="paired-input"><input id="ramusHeightRange" data-key="patient.ramusHeightPct" type="range" min="80" max="125" step="1" /><input data-number-for="patient.ramusHeightPct" type="number" min="80" max="125" step="1" /><span>%</span></div>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h3>運動学的寸法</h3>
+            <div class="paired-field">
+              <label for="intercondylarRange">顆頭間距離</label>
+              <div class="paired-input"><input id="intercondylarRange" data-key="patient.intercondylarMm" type="range" min="75" max="160" step="1" /><input data-number-for="patient.intercondylarMm" type="number" min="75" max="160" step="1" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="hingeIncisorRange">蝶番軸―切歯点距離</label>
+              <div class="paired-input"><input id="hingeIncisorRange" data-key="patient.hingeIncisorMm" type="range" min="70" max="130" step="1" /><input data-number-for="patient.hingeIncisorMm" type="number" min="70" max="130" step="1" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="occlusalPitchRange">咬合平面傾斜</label>
+              <div class="paired-input"><input id="occlusalPitchRange" data-key="patient.occlusalPitchDeg" type="range" min="-15" max="25" step="0.5" /><input data-number-for="patient.occlusalPitchDeg" type="number" min="-15" max="25" step="0.5" /><span>°</span></div>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h3>顎関節位置補正</h3>
+            <p class="card-note">頭蓋参照画像に対する左右個別の仮想位置補正です。</p>
+            <div class="paired-field">
+              <label for="jointXRange">顎関節中心・前後</label>
+              <div class="paired-input"><input id="jointXRange" data-side-key="jointOffsetXMm" type="range" min="-8" max="8" step="0.1" /><input data-side-number-for="jointOffsetXMm" type="number" min="-8" max="8" step="0.1" /><span>mm</span></div>
+            </div>
+            <div class="paired-field">
+              <label for="jointYRange">顎関節中心・上下</label>
+              <div class="paired-input"><input id="jointYRange" data-side-key="jointOffsetYMm" type="range" min="-8" max="8" step="0.1" /><input data-side-number-for="jointOffsetYMm" type="number" min="-8" max="8" step="0.1" /><span>mm</span></div>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h3>左右差プリセット</h3>
+            <div class="button-grid two">
+              <button class="preset-button" data-preset="symmetric" type="button">左右を同値化</button>
+              <button class="preset-button" data-preset="asymmetric" type="button">左右差モデル</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-page" data-page="display">
+          <div class="section-title">
+            <div><p class="eyebrow">PUBLICATION & DATA</p><h2>表示・保存・公開</h2></div>
+          </div>
+
+          <div class="control-card">
+            <h3>表示モード</h3>
+            <label class="switch-row"><span><strong>X線様透過表示</strong><small>頭蓋骨を淡色化し、内部レイヤーを優先表示</small></span><input data-key="display.xrayMode" type="checkbox" /></label>
+            <label class="switch-row"><span><strong>顎関節断面表示</strong><small>関節腔・円板・後部結合組織を強調</small></span><input data-key="display.cutaway" type="checkbox" /></label>
+            <label class="switch-row"><span><strong>基準形態ゴースト</strong><small>平均値形態を破線で重ね、変化量を比較</small></span><input data-key="display.showBaseline" type="checkbox" /></label>
+            <label class="switch-row"><span><strong>解剖ラベル</strong><small>主要構造の引出線を表示</small></span><input data-key="display.showLabels" type="checkbox" /></label>
+            <label class="switch-row"><span><strong>基準平面</strong><small>Frankfort平面・咬合平面</small></span><input data-key="display.showPlanes" type="checkbox" /></label>
+            <label class="switch-row"><span><strong>運動軌跡</strong><small>顆頭・円板・切歯点の経路を表示</small></span><input data-key="display.showPaths" type="checkbox" /></label>
+            <label class="switch-row"><span><strong>計測グリッド</strong><small>顎関節拡大図に5 mm方眼を表示</small></span><input data-key="display.showGrid" type="checkbox" /></label>
+          </div>
+
+          <div class="control-card">
+            <h3>注目部位</h3>
+            <div class="select-row">
+              <label for="focusTarget">自動強調・自動ズーム</label>
+              <select id="focusTarget" data-key="display.focusTarget">
+                <option value="all">頭蓋全体</option>
+                <option value="tmj">顎関節全体</option>
+                <option value="eminence">関節結節</option>
+                <option value="condyle">下顎頭</option>
+                <option value="disc">関節円板</option>
+                <option value="mandible">下顎骨</option>
+              </select>
+            </div>
+            <button class="wide-button" id="fitViewButton" type="button">ビューを自動調整</button>
+          </div>
+
+          <div class="control-card">
+            <h3>症例データ</h3>
+            <div class="button-grid two">
+              <button class="action-button" id="exportJsonButton" type="button">JSON保存</button>
+              <button class="action-button" id="importJsonButton" type="button">JSON読込</button>
+              <button class="action-button" id="copyShareButton" type="button">共有URL</button>
+              <button class="action-button" id="captureButton" type="button">PNG保存</button>
+            </div>
+            <input id="jsonFileInput" type="file" accept="application/json,.json" hidden />
+            <p class="card-note" id="saveStatus" aria-live="polite">症例データはブラウザー内で処理され、外部送信されません。</p>
+          </div>
+
+          <div class="control-card">
+            <h3>教育用プリセット</h3>
+            <div class="preset-list">
+              <button class="preset-row" data-preset="average" type="button"><strong>平均値モデル</strong><span>35°・楕円形顆頭・円板整位</span></button>
+              <button class="preset-row" data-preset="flat" type="button"><strong>平坦な関節結節</strong><span>20°・低い隆起</span></button>
+              <button class="preset-row" data-preset="steep" type="button"><strong>急峻な関節結節</strong><span>55°・高い隆起</span></button>
+              <button class="preset-row" data-preset="large-condyle" type="button"><strong>大型下顎頭</strong><span>関節腔との寸法関係を比較</span></button>
+              <button class="preset-row" data-preset="disc-reduction" type="button"><strong>円板前方位・復位あり</strong><span>運動中の相対位置変化</span></button>
+              <button class="preset-row" data-preset="disc-nonreducing" type="button"><strong>円板前方位・復位なし</strong><span>追従制限モデル</span></button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <main class="center-stage">
+      <div class="view-toolbar">
+        <div class="view-segment" role="group" aria-label="ビュー構成">
+          <button class="view-mode active" data-layout="split" type="button">分割</button>
+          <button class="view-mode" data-layout="skull" type="button">頭蓋</button>
+          <button class="view-mode" data-layout="joint" type="button">顎関節</button>
+        </div>
+        <div class="toolbar-info">
+          <span id="viewSideLabel">右側面</span>
+          <span class="separator">•</span>
+          <span>ドラッグ：移動</span>
+          <span>ホイール：拡大</span>
+          <span>ダブルクリック：復帰</span>
+        </div>
+        <div class="toolbar-actions">
+          <button class="tool-button active" id="toggleLabelsButton" type="button">ラベル</button>
+          <button class="tool-button" id="focusJointButton" type="button">関節へ</button>
+        </div>
+      </div>
+
+      <div class="viewport-grid" data-layout="split" id="viewportGrid">
+        <section class="viewport-card skull-card" aria-label="実写調頭蓋側面シミュレーション">
+          <div class="viewport-heading">
+            <div><p>ANATOMICAL ATLAS</p><h2>頭蓋・下顎運動</h2></div>
+            <div class="viewport-badges"><span id="skullZoomBadge">100%</span><span id="motionPhaseBadge">中心位</span></div>
+          </div>
+          <div class="canvas-wrap">
+            <canvas id="skullCanvas" aria-label="頭蓋骨と顎関節の動的表示"></canvas>
+            <div class="canvas-corner-note"><span class="right-marker">R</span><span>前方 →</span></div>
+            <div class="scale-bar" id="skullScaleBar"><span></span><b>20 mm</b></div>
+          </div>
+        </section>
+
+        <section class="viewport-card joint-card" aria-label="顎関節矢状断シミュレーション">
+          <div class="viewport-heading">
+            <div><p>SAGITTAL SECTION</p><h2>顎関節拡大・断面</h2></div>
+            <div class="viewport-badges"><span id="jointModeBadge">断面表示</span><span id="morphologyAngleBadge">形態角 35.0°</span></div>
+          </div>
+          <div class="canvas-wrap detail-wrap">
+            <canvas id="jointCanvas" aria-label="側頭骨、下顎頭、関節円板の矢状断表示"></canvas>
+            <div class="detail-legend" aria-hidden="true">
+              <span><i class="legend-disc"></i>関節円板</span>
+              <span><i class="legend-condyle"></i>下顎頭</span>
+              <span><i class="legend-soft"></i>後部結合組織</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="timeline-card" aria-label="運動タイムライン">
+        <div class="timeline-heading">
+          <div><p>PATH ANALYSIS</p><h2>運動経路・相対位置</h2></div>
+          <div class="timeline-controls">
+            <button id="timelinePlayButton" type="button" aria-label="再生または一時停止">▶</button>
+            <input id="timelineScrubber" type="range" min="0" max="1000" step="1" value="0" aria-label="運動タイムライン" />
+            <span id="timelineTime">0.00 / 4.00 秒</span>
+          </div>
+        </div>
+        <canvas id="timelineCanvas" aria-label="顆頭・円板・切歯点の運動グラフ"></canvas>
+      </section>
+    </main>
+
+    <aside class="right-panel" aria-label="表示レイヤーと計測値">
+      <div class="right-scroll">
+        <section class="inspector-card live-card">
+          <div class="inspector-heading"><div><p>LIVE READOUT</p><h2>リアルタイム計測</h2></div><span class="side-chip" id="selectedSideChip">右</span></div>
+          <dl class="metric-list">
+            <div><dt>顆頭前方移動</dt><dd id="metricCondyleForward">0.0 mm</dd></div>
+            <div><dt>顆頭下方移動</dt><dd id="metricCondyleDrop">0.0 mm</dd></div>
+            <div><dt>下顎回転</dt><dd id="metricJawRotation">0.0°</dd></div>
+            <div><dt>関節結節形態角</dt><dd id="metricMorphologyAngle">35.0°</dd></div>
+            <div><dt>矢状側方顆路傾斜（派生）</dt><dd id="metricSagittalLateralAngle">—</dd></div>
+            <div><dt>円板相対前方位</dt><dd id="metricDiscOffset">0.0 mm</dd></div>
+            <div><dt>推定上方クリアランス</dt><dd id="metricClearance">—</dd></div>
+            <div><dt>側方運動側</dt><dd id="metricWorkingSide">中心位</dd></div>
+          </dl>
+          <div class="compatibility-meter">
+            <div><span>顆路と結節形態の整合</span><strong id="compatibilityLabel">一致</strong></div>
+            <div class="meter-track"><span id="compatibilityBar"></span></div>
+            <small id="compatibilityNote">形態連動が有効です。</small>
+          </div>
+        </section>
+
+        <section class="inspector-card">
+          <div class="inspector-heading"><div><p>LAYER CONTROL</p><h2>透過・表示レイヤー</h2></div><button class="mini-button" id="showAllLayersButton" type="button">全表示</button></div>
+          <div class="layer-list">
+            <div class="layer-row" data-layer-row="cranium"><label><input data-layer-visible="cranium" type="checkbox" /><span class="layer-swatch bone"></span><strong>頭蓋・上顎</strong></label><div><input data-layer-opacity="cranium" type="range" min="0" max="100" step="1" /><output data-layer-output="cranium">100%</output></div></div>
+            <div class="layer-row" data-layer-row="temporal"><label><input data-layer-visible="temporal" type="checkbox" /><span class="layer-swatch temporal"></span><strong>側頭骨・関節結節</strong></label><div><input data-layer-opacity="temporal" type="range" min="0" max="100" step="1" /><output data-layer-output="temporal">100%</output></div></div>
+            <div class="layer-row" data-layer-row="mandible"><label><input data-layer-visible="mandible" type="checkbox" /><span class="layer-swatch mandible"></span><strong>下顎骨</strong></label><div><input data-layer-opacity="mandible" type="range" min="0" max="100" step="1" /><output data-layer-output="mandible">100%</output></div></div>
+            <div class="layer-row" data-layer-row="condyle"><label><input data-layer-visible="condyle" type="checkbox" /><span class="layer-swatch condyle"></span><strong>下顎頭</strong></label><div><input data-layer-opacity="condyle" type="range" min="0" max="100" step="1" /><output data-layer-output="condyle">100%</output></div></div>
+            <div class="layer-row" data-layer-row="disc"><label><input data-layer-visible="disc" type="checkbox" /><span class="layer-swatch disc"></span><strong>関節円板</strong></label><div><input data-layer-opacity="disc" type="range" min="0" max="100" step="1" /><output data-layer-output="disc">100%</output></div></div>
+            <div class="layer-row" data-layer-row="softTissue"><label><input data-layer-visible="softTissue" type="checkbox" /><span class="layer-swatch soft"></span><strong>関節包・靱帯・後部組織</strong></label><div><input data-layer-opacity="softTissue" type="range" min="0" max="100" step="1" /><output data-layer-output="softTissue">70%</output></div></div>
+            <div class="layer-row" data-layer-row="paths"><label><input data-layer-visible="paths" type="checkbox" /><span class="layer-swatch paths"></span><strong>運動経路</strong></label><div><input data-layer-opacity="paths" type="range" min="0" max="100" step="1" /><output data-layer-output="paths">90%</output></div></div>
+          </div>
+          <p class="inspector-note">チェックで表示を切り替え、スライダーで各部位を個別に透過できます。</p>
+        </section>
+
+        <section class="inspector-card top-view-card">
+          <div class="inspector-heading"><div><p>HORIZONTAL PLANE</p><h2>ベネット角・顆頭間距離</h2></div></div>
+          <canvas id="topCanvas" aria-label="水平面における左右顆頭運動"></canvas>
+          <div class="top-view-readout"><span>左 <b id="topLeftAngle">15.0°</b></span><span>顆頭間 <b id="topIntercondylar">110 mm</b></span><span>右 <b id="topRightAngle">15.0°</b></span></div>
+        </section>
+
+        <section class="inspector-card model-note">
+          <div class="notice-icon" aria-hidden="true">i</div>
+          <div><strong>教育・説明用の可変形状モデル</strong><p>実患者の診断、治療計画、補綴物製作の最終判断には使用しないでください。形態・運動は入力値から作る近似モデルで、MRI・CT・顎運動計測を代替しません。</p><p class="asset-credit">頭蓋参照図：BodyParts3D / Anatomography（DBCLS）、CC BY-SA 2.1 JP。表示用に分離・透過加工。</p></div>
+        </section>
+      </div>
+    </aside>
+  </div>
+
+  <dialog id="helpDialog">
+    <form method="dialog" class="dialog-card">
+      <header><div><p class="eyebrow">QUICK GUIDE</p><h2>TMJ Atlas Lab の操作</h2></div><button type="submit" class="dialog-close" aria-label="閉じる">×</button></header>
+      <div class="dialog-body">
+        <section><h3>1. 顆路角と関節結節を連動</h3><p>「骨形態」で矢状前方顆路傾斜角を変更すると、連動が有効な場合は、関節結節の前後長に対する隆起量を再計算し、側頭骨の関節面を変形します。連動を外すと、運動経路と骨形態を別々に比較できます。</p></section>
+        <section><h3>2. 下顎頭・関節円板を変更</h3><p>下顎頭の前後径・上下径・形態、円板の三部位の厚み、前後的位置、復位の有無、追従率を左右別に設定できます。運動中の円板位置は、設定した復位閾値と追従率から連続的に算出します。</p></section>
+        <section><h3>3. 見たい部位を透過・強調</h3><p>右側のレイヤーで頭蓋、下顎、側頭骨、下顎頭、関節円板、軟組織を個別に表示・透過できます。「公開・保存」の注目部位から自動ズームも行えます。</p></section>
+        <section><h3>4. 公開・共有</h3><p>サーバー不要の静的Webアプリです。JSON保存、URL内共有、PNG保存に対応します。共有URLは入力値をURLのハッシュ部分へ格納します。</p></section>
+        <div class="warning-box"><strong>精度境界</strong><p>本アプリは解剖学的関係を理解するための視覚モデルです。組織変形、接触圧、関節雑音、疼痛、筋活動、円板穿孔、骨変形の診断判定などは計算しません。</p></div>
+        <div class="warning-box"><strong>解剖画像の表示</strong><p>頭蓋・下顎の参照画像は BodyParts3D / Anatomography（© Database Center for Life Science）を基に、背景除去、頭蓋・下顎・歯列のレイヤー分離、顎関節部の可変形状描画を追加しています。画像レイヤーは CC BY-SA 2.1 Japan で再配布します。</p></div>
+      </div>
+      <footer><button type="submit" class="primary-dialog-button">シミュレーターへ戻る</button></footer>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
